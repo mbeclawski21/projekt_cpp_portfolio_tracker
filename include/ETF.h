@@ -4,15 +4,12 @@
 #include "Asset.h"
 
 class ETF : public Asset {
-    std::string sector; // np. S&P500
+    std::string sector;
 public:
     ETF(std::string n, std::string s, double p, std::string sect) 
         : Asset(n, s, p), sector(sect) {}
 
-    void displayInfo() const override {
-        std::cout << "ETF [" << sector << "]: ";
-        Asset::displayInfo();
-    }
+    std::string getSector() const { return sector; }
 };
 
 #endif

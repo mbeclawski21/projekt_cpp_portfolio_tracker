@@ -4,15 +4,12 @@
 #include "Asset.h"
 
 class Crypto : public Asset {
-    std::string blockchainNetwork; // np. Bitcoin, Ethereum
+    std::string blockchainNetwork;
 public:
     Crypto(std::string n, std::string s, double p, std::string network) 
         : Asset(n, s, p), blockchainNetwork(network) {}
 
-    void displayInfo() const override {
-        std::cout << "KRYPTO [" << blockchainNetwork << "]: ";
-        Asset::displayInfo();
-    }
+    std::string getNetwork() const { return blockchainNetwork; }
 };
 
 #endif

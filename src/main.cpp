@@ -1,89 +1,88 @@
 #include <iostream>
-#include <string>
-#include <cpr/cpr.h>
-#include <nlohmann/json.hpp>
+#include <GLFW/glfw3.h>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include "implot.h"
 
 #include "Portfolio.h"
 #include "Stock.h"
 #include "Crypto.h"
+#include "ui.h"
 
-using json = nlohmann::json;
-
-void displayMenu() {
-    std::cout << "\n=== PortfolioTracker - Menu ===\n";
-    std::cout << "1. Dodaj Akcje (Recznie)\n";
-    std::cout << "2. Dodaj Krypto (Z API CoinGecko)\n";
-    std::cout << "3. Pokaz zawartosc portfela\n";
-    std::cout << "0. Wyjdz z programu\n";
-    std::cout << "Wybierz opcje: ";
+static void glfw_error_callback(int error, const char* description) {
+    std::cerr << "GLFW Error " << error << ": " << description << std::endl;
 }
 
 int main() {
-    Portfolio myPortfolio;
-    int choice = -1;
 
-    std::cout << "Witaj w Tracker Portfolio!\n";
+    std::cout << "[DEBUG] Uruchamiam program..." << std::endl;
 
-    while (choice != 0) {
-        displayMenu();
-        
-        // Zabezpieczenie przed wpisaniem litery zamiast cyfry
-        if (!(std::cin >> choice)) {
-            std::cout << "Nieprawidlowy format wyboru.\n";
-            std::cin.clear();
-            std::cin.ignore(1000, '\n');
-            continue;
-        }
-
-        if (choice == 1) {
-            std::string name, symbol, exchange;
-            double price;
-            std::cout << "Podaj nazwe: "; std::cin >> name;
-            std::cout << "Podaj symbol: "; std::cin >> symbol;
-            std::cout << "Podaj cene: "; std::cin >> price;
-            std::cout << "Podaj gielde: "; std::cin >> exchange;
-
-            myPortfolio.addAsset(std::make_unique<Stock>(name, symbol, price, exchange));
-            std::cout << "Akcja dodana!\n";
-
-        } else if (choice == 2) {
-            std::string coinId, symbol, network;
-            
-            std::cout << "Podaj ID krypto (np. bitcoin): ";
-            std::cin >> coinId;
-            std::cout << "Podaj symbol: ";
-            std::cin >> symbol;
-            std::cout << "Podaj siec: ";
-            std::cin >> network;
-
-            std::cout << "Laczenie z API... Pobieram cene dla: " << coinId << "\n";
-            
-            std::string url = "https://api.coingecko.com/api/v3/simple/price?ids=" + coinId + "&vs_currencies=usd";
-            cpr::Response r = cpr::Get(cpr::Url{url});
-
-            double livePrice = 0.0;
-
-            if (r.status_code == 200) {
-                json data = json::parse(r.text);
-                
-                if (data.contains(coinId)) {
-                    livePrice = data[coinId]["usd"];
-                    std::cout << "Pobrano cene: $" << livePrice << "\n";
-                } else {
-                    std::cout << "Nie znaleziono ceny dla: " << coinId << "\n";
-                }
-            } else {
-                std::cout << "Blad polaczenia (Kod: " << r.status_code << ")\n";
-            }
-
-            myPortfolio.addAsset(std::make_unique<Crypto>(coinId, symbol, livePrice, network));
-            std::cout << "Krypto dodane do portfela!\n";
-
-        } else if (choice == 3) {
-            myPortfolio.displayPortfolio();
-        }
+    glfwSetErrorCallback(glfw_error_callback);
+    if (!glfwInit()) {
+        std::cerr << "[BLAD] Nie udalo sie zainicjowac biblioteki GLFW!" << std::endl;
+        return 1;
     }
-    
-    std::cout << "Do zobaczenia!\n";
+
+    std::cout << "[DEBUG] GLFW zainicjowane poprawnie." << std::endl;
+
+    const char* glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+
+    GLFWwindow* window = glfwCreateWindow(1280, 720, "Tracker Portfolio - Moje Krypto", nullptr, nullptr);
+    if (window == nullptr) {
+        std::cerr << "[BLAD] Nie udalo sie stworzyc okna graficznego!" << std::endl;
+        glfwTerminate();
+        return 1;
+    }
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImPlot::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.Fonts->AddFontDefault();
+    static const ImWchar ranges[] = { 0x0020, 0x00FF, 0x0100, 0x017F, 0 };
+    io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 18.0f, NULL, ranges);
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    Portfolio myPortfolio;
+    myPortfolio.addAsset(std::make_unique<Crypto>("bitcoin", "BTC", 64200.0, "Bitcoin"));
+    myPortfolio.addAsset(std::make_unique<Stock>("Apple", "AAPL", 175.5, "NASDAQ"));
+
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        RenderUI(myPortfolio);
+
+        ImGui::Render();
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        glfwSwapBuffers(window);
+    }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
+    ImGui::DestroyContext();
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
     return 0;
 }

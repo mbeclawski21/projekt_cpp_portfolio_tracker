@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <memory>
-#include <iostream>
 #include <algorithm>
 #include "Asset.h"
 
@@ -12,12 +11,10 @@ private:
     std::vector<std::unique_ptr<Asset>> assets;
 
 public:
-    //dodawanie aktywa
     void addAsset(std::unique_ptr<Asset> asset) {
         assets.push_back(std::move(asset));
     }
 
-    //Usuwanie aktywa po symbolu (np. "BTC")
     void removeAsset(const std::string& symbol) {
         auto it = std::remove_if(assets.begin(), assets.end(),
             [&symbol](const std::unique_ptr<Asset>& asset) {
@@ -26,13 +23,9 @@ public:
 
         if (it != assets.end()) {
             assets.erase(it, assets.end());
-            std::cout << "Usunieto " << symbol << " z portfela.\n";
-        } else {
-            std::cout << "Nie znaleziono aktywa o symbolu " << symbol << ".\n";
         }
     }
 
-    //Zliczanie całkowitej wartości
     double calculateTotalValue() const {
         double total = 0.0;
         for (const auto& asset : assets) {
@@ -41,22 +34,9 @@ public:
         return total;
     }
 
-    // Wyświetlanie
-    void displayPortfolio() const {
-        std::cout << "\n=== Twoj Portfel Inwestycyjny ===\n";
-        if (assets.empty()) {
-            std::cout << "Portfel jest pusty. Dodaj jakies aktywa!\n";
-            std::cout << "=================================\n";
-            return;
-        }
-
-        for (const auto& asset : assets) {
-            asset->displayInfo();
-        }
-        
-        std::cout << "---------------------------------\n";
-        std::cout << "Calkowita wartosc portfela: $" << calculateTotalValue() << "\n";
-        std::cout << "=================================\n";
+    // TA METODA MUSI TU BYĆ I PLIK MUSI BYĆ ZAPISANY (Ctrl+S)
+    const std::vector<std::unique_ptr<Asset>>& getAssets() const {
+        return assets;
     }
 };
 

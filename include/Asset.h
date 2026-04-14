@@ -2,7 +2,6 @@
 #define ASSET_H
 
 #include <string>
-#include <iostream>
 
 class Asset {
 protected:
@@ -16,17 +15,13 @@ public:
 
     virtual ~Asset() {}
 
-    virtual void displayInfo() const {
-        std::cout << "[" << symbol << "] " << name << ": $" << currentPrice << std::endl;
-    }
+    std::string getName() const { return name; }
+    std::string getSymbol() const { return symbol; }
+    double getPrice() const { return currentPrice; }
 
-    // Tu bedzie wklejone API do aktualizacji ceny
     virtual void updatePrice(double newPrice) {
         currentPrice = newPrice;
     }
-
-    std::string getSymbol() const { return symbol; }
-    double getPrice() const { return currentPrice; }
 };
 
 #endif

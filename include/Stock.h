@@ -1,13 +1,15 @@
+#ifndef STOCK_H
+#define STOCK_H
+
 #include "Asset.h"
 
 class Stock : public Asset {
-    std::string stockExchange; // np. GPW lub NASDAQ
+    std::string stockExchange;
 public:
     Stock(std::string n, std::string s, double p, std::string ex) 
         : Asset(n, s, p), stockExchange(ex) {}
 
-    void displayInfo() const override {
-        std::cout << "AKCJA: ";
-        Asset::displayInfo();
-    }
+    std::string getExchange() const { return stockExchange; }
 };
+
+#endif
