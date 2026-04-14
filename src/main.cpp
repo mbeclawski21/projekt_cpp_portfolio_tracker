@@ -4,9 +4,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "implot.h"
-
 #include "Portfolio.h"
-#include "Stock.h"
 #include "Crypto.h"
 #include "ui.h"
 
@@ -15,16 +13,10 @@ static void glfw_error_callback(int error, const char* description) {
 }
 
 int main() {
-
-    std::cout << "[DEBUG] Uruchamiam program..." << std::endl;
-
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) {
-        std::cerr << "[BLAD] Nie udalo sie zainicjowac biblioteki GLFW!" << std::endl;
         return 1;
     }
-
-    std::cout << "[DEBUG] GLFW zainicjowane poprawnie." << std::endl;
 
     const char* glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -32,7 +24,6 @@ int main() {
 
     GLFWwindow* window = glfwCreateWindow(1280, 720, "Tracker Portfolio - Moje Krypto", nullptr, nullptr);
     if (window == nullptr) {
-        std::cerr << "[BLAD] Nie udalo sie stworzyc okna graficznego!" << std::endl;
         glfwTerminate();
         return 1;
     }
@@ -42,19 +33,18 @@ int main() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
+    
     ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontDefault();
-    static const ImWchar ranges[] = { 0x0020, 0x00FF, 0x0100, 0x017F, 0 };
-    io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\segoeui.ttf", 18.0f, NULL, ranges);
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.Fonts->AddFontDefault();
 
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     Portfolio myPortfolio;
-    myPortfolio.addAsset(std::make_unique<Crypto>("bitcoin", "BTC", 64200.0, "Bitcoin"));
-    myPortfolio.addAsset(std::make_unique<Stock>("Apple", "AAPL", 175.5, "NASDAQ"));
+    myPortfolio.addAsset(std::make_unique<Crypto>("bitcoin", "BTC", 74500.0, 0.5));
+    myPortfolio.addAsset(std::make_unique<Crypto>("ethereum", "ETH", 3500.0, 2.0));
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
