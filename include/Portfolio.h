@@ -34,7 +34,6 @@ public:
         return total;
     }
 
-    // TA METODA MUSI TU BYĆ I PLIK MUSI BYĆ ZAPISANY (Ctrl+S)
     const std::vector<std::unique_ptr<Asset>>& getAssets() const {
         return assets;
     }

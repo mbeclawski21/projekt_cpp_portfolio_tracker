@@ -9,7 +9,7 @@ Portfolio tracker to aplikacja służąca do śledzenia i zarządzania portfelem
 * Program pozwala na dodawanie dowolnej liczby obiektów w trakcie działania
 * Integracja z Live API (CoinGecko): Program automatycznie pobiera aktualne kursy kryptowalut z internetu. Użytkownik nie musi już ręcznie wpisywać cen.
 
-## Tydzień 3 - Migracja do GUI i Rozbudowa Logiki Portfela
+## Tydzień 3 - Migracja do GUI i Rozbudowa Logiki Portfela.
 
 * **Nowy silnik graficzny:** Porzucenie standardowego wejścia/wyjścia konsolowego (`std::cin`/`std::cout`) na rzecz biblioteki **Dear ImGui**. Aplikacja wykorzystuje nowoczesny interfejs okienkowy.
 * **Wizualizacja danych:** Integracja biblioteki **ImPlot**, umożliwiającej rysowanie wykresów cen aktywów.
@@ -19,3 +19,7 @@ Portfolio tracker to aplikacja służąca do śledzenia i zarządzania portfelem
     * Przejście na inteligentne wskaźniki (`std::unique_ptr`) w zarządzaniu obiektami portfela.
     * Optymalizacja interfejsu pod kątem czytelności i kompatybilności (rezygnacja z polskich znaków na rzecz standardowego kodowania ASCII/UTF-8).
 * **Automatyzacja CMake:** Pełna konfiguracja `CMakeLists.txt` z modułem `FetchContent`, co pozwala na automatyczne pobieranie wszystkich bibliotek przy pierwszym budowaniu projektu.
+* **Dynamiczne wykresy historyczne:** Rozbudowa modułu wizualizacji o pobieranie realnych danych rynkowych z ostatnich 7 dni (endpoint `/market_chart`). Dane są pobierane asynchronicznie po kliknięciu przycisku, co zapewnia płynność działania interfejsu.
+* **Automatyczne skalowanie okien:** Zastosowanie flagi `ImGuiWindowFlags_AlwaysAutoResize`, dzięki której okna aplikacji dynamicznie dopasowują swój rozmiar do liczby dodanych elementów, eliminując potrzebę ręcznego przewijania tabeli.
+* **Walidacja i czyszczenie danych:** Implementacja funkcji automatycznie formatującej wpisy użytkownika (konwersja na małe litery, usuwanie zbędnych spacji), co zapobiega błędom `404` przy zapytaniach do API.
+* **Unikalność interfejsu:** Rozwiązanie problemu konfliktów identyfikatorów w Dear ImGui poprzez generowanie unikalnych ID dla przycisków w tabeli, co pozwala na niezależne otwieranie wykresów dla każdego aktywa w portfelu.
