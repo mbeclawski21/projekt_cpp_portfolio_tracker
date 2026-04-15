@@ -23,3 +23,9 @@ Portfolio tracker to aplikacja służąca do śledzenia i zarządzania portfelem
 * **Automatyczne skalowanie okien:** Zastosowanie flagi `ImGuiWindowFlags_AlwaysAutoResize`, dzięki której okna aplikacji dynamicznie dopasowują swój rozmiar do liczby dodanych elementów, eliminując potrzebę ręcznego przewijania tabeli.
 * **Walidacja i czyszczenie danych:** Implementacja funkcji automatycznie formatującej wpisy użytkownika (konwersja na małe litery, usuwanie zbędnych spacji), co zapobiega błędom `404` przy zapytaniach do API.
 * **Unikalność interfejsu:** Rozwiązanie problemu konfliktów identyfikatorów w Dear ImGui poprzez generowanie unikalnych ID dla przycisków w tabeli, co pozwala na niezależne otwieranie wykresów dla każdego aktywa w portfelu.
+* Implementacja systemu zapisu i odczytu stanu portfela przy użyciu biblioteki **nlohmann/json**. Wszystkie dane są automatycznie utrwalane w pliku `portfolio.json`, co pozwala na zachowanie historii inwestycji po restarcie aplikacji.
+* **Tracking zysków (P/L):** Wprowadzenie logiki obliczania zysku/straty (Profit/Loss) dla każdego aktywa na podstawie wprowadzonej ceny zakupu. Wyniki są prezentowane kwotowo ($) oraz procentowo (%), z dynamiczną sygnalizacją kolorystyczną (zielony/czerwony).
+* **Analityka sumaryczna portfela:** Dodanie globalnego licznika w nagłówku aplikacji, który w czasie rzeczywistym agreguje dane ze wszystkich aktywów, pokazując całkowitą wartość kapitału oraz łączny zysk/stratę całego portfela.
+* **Synchronizacja i automatyczne odświeżanie:** * Przycisk ręcznej synchronizacji, pozwalający na natychmiastowe pobranie najświeższych kursów dla wszystkich posiadanych kryptowalut naraz (optymalizacja zapytań API).
+    * System automatycznego odświeżania danych w tle co 5 minut.
+* **Statystyki ekstremów cenowych:** Rozbudowa okna wykresów o analizę danych historycznych - wyznaczanie i wyświetlanie najniższej (MIN) oraz najwyższej (MAX) ceny z ostatniego tygodnia.

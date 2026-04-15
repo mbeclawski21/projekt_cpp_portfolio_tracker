@@ -4,8 +4,9 @@
 #include "Crypto.h"
 #include <string>
 #include <vector>
-#include <iostream>
 #include <algorithm>
+#include <fstream>
+#include <chrono>
 #include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
 
@@ -20,11 +21,65 @@ static std::vector<double> chartDays;
 static char inputCoinId[64] = "";
 static char inputSymbol[16] = "";
 static float inputAmount = 1.0f;
+static float inputPurchasePrice = 0.0f;
+
+static float refreshTimer = 0.0f;
 
 std::string ToLower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
     s.erase(std::remove_if(s.begin(), s.end(), isspace), s.end());
     return s;
+}
+
+void SavePortfolio(const Portfolio& p) {
+    json j = json::array();
+    for (const auto& a : p.getAssets()) {
+        j.push_back({
+            {"id", a->getName()},
+            {"symbol", a->getSymbol()},
+            {"amount", a->getAmount()},
+            {"purchasePrice", a->getPurchasePrice()},
+            {"currentPrice", a->getPrice()}
+        });
+    }
+    std::ofstream file("portfolio.json");
+    file << j.dump(4);
+}
+
+void LoadPortfolio(Portfolio& p) {
+    std::ifstream file("portfolio.json");
+    if (!file.is_open()) return;
+    json j;
+    file >> j;
+    for (const auto& item : j) {
+        p.addAsset(std::make_unique<Crypto>(
+            item["id"], item["symbol"], item["currentPrice"], item["amount"], item["purchasePrice"]
+        ));
+    }
+}
+
+void RefreshAllPrices(Portfolio& myPortfolio) {
+    auto& assets = myPortfolio.getAssets();
+    if (assets.empty()) return;
+
+    std::string ids = "";
+    for (size_t i = 0; i < assets.size(); ++i) {
+        ids += assets[i]->getName();
+        if (i < assets.size() - 1) ids += ",";
+    }
+
+    std::string url = "https://api.coingecko.com/api/v3/simple/price?ids=" + ids + "&vs_currencies=usd";
+    cpr::Response r = cpr::Get(cpr::Url{url});
+
+    if (r.status_code == 200) {
+        json data = json::parse(r.text);
+        for (const auto& asset : assets) {
+            std::string id = asset->getName();
+            if (data.contains(id)) {
+                asset->updatePrice(data[id]["usd"]);
+            }
+        }
+    }
 }
 
 void FetchHistoricalData(std::string coinId) {
@@ -46,30 +101,72 @@ void FetchHistoricalData(std::string coinId) {
 }
 
 void RenderUI(Portfolio& myPortfolio) {
+    static bool firstLoad = true;
+    if (firstLoad) {
+        LoadPortfolio(myPortfolio);
+        firstLoad = false;
+    }
+
+    refreshTimer += ImGui::GetIO().DeltaTime;
+    if (refreshTimer > 300.0f) {
+        RefreshAllPrices(myPortfolio);
+        refreshTimer = 0.0f;
+    }
+
     ImGui::Begin("Moj Portfel Inwestycyjny", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     
-    ImGui::Text("Calkowita wartosc portfela: $%.2f", myPortfolio.calculateTotalValue());
+    double totalVal = myPortfolio.calculateTotalValue();
+    double totalCost = 0;
+    for (const auto& a : myPortfolio.getAssets()) {
+        totalCost += a->getTotalCost();
+    }
+    double totalProfit = totalVal - totalCost;
+    double totalProfitPct = (totalCost > 0) ? (totalProfit / totalCost) * 100.0 : 0.0;
+    
+    ImVec4 totalPlColor = (totalProfit >= 0) ? ImVec4(0,1,0,1) : ImVec4(1,0,0,1);
+
+    ImGui::Text("Calkowita wartosc: $%.2f", totalVal);
+    ImGui::SameLine();
+    ImGui::Text(" | Calkowity zysk: ");
+    ImGui::SameLine();
+    ImGui::TextColored(totalPlColor, "$%.2f (%.2f%%)", totalProfit, totalProfitPct);
+    
+    ImGui::SameLine(ImGui::GetWindowWidth() - 150);
+    if (ImGui::Button("Synchronizuj kursy")) {
+        RefreshAllPrices(myPortfolio);
+        refreshTimer = 0.0f;
+    }
+
     ImGui::Separator();
 
-    if (ImGui::BeginTable("TabelaAktywow", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
+    if (ImGui::BeginTable("TabelaAktywow", 8, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
         ImGui::TableSetupColumn("Symbol");
-        ImGui::TableSetupColumn("Nazwa");
         ImGui::TableSetupColumn("Ilosc");
-        ImGui::TableSetupColumn("Cena");
+        ImGui::TableSetupColumn("Cena Kupna");
+        ImGui::TableSetupColumn("Cena Aktualna");
+        ImGui::TableSetupColumn("Wartosc");
+        ImGui::TableSetupColumn("Zysk/Strata $");
+        ImGui::TableSetupColumn("Zysk/Strata %");
         ImGui::TableSetupColumn("Akcje");
         ImGui::TableHeadersRow();
 
         int n = 0;
         for (const auto& asset : myPortfolio.getAssets()) {
+            double pl = asset->getProfitLoss();
+            ImVec4 plColor = (pl >= 0) ? ImVec4(0,1,0,1) : ImVec4(1,0,0,1);
+
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0); ImGui::Text("%s", asset->getSymbol().c_str());
-            ImGui::TableSetColumnIndex(1); ImGui::Text("%s", asset->getName().c_str());
-            ImGui::TableSetColumnIndex(2); ImGui::Text("%.4f", asset->getAmount());
+            ImGui::TableSetColumnIndex(1); ImGui::Text("%.4f", asset->getAmount());
+            ImGui::TableSetColumnIndex(2); ImGui::Text("$%.2f", asset->getPurchasePrice());
             ImGui::TableSetColumnIndex(3); ImGui::Text("$%.2f", asset->getPrice());
-            ImGui::TableSetColumnIndex(4);
+            ImGui::TableSetColumnIndex(4); ImGui::Text("$%.2f", asset->getTotalValue());
+            ImGui::TableSetColumnIndex(5); ImGui::TextColored(plColor, "$%.2f", pl);
+            ImGui::TableSetColumnIndex(6); ImGui::TextColored(plColor, "%.2f%%", asset->getProfitLossPercentage());
+            ImGui::TableSetColumnIndex(7);
             
-            std::string buttonLabel = "Wykres##" + std::to_string(n++);
-            if (ImGui::Button(buttonLabel.c_str())) {
+            std::string bl = "Wykres##" + std::to_string(n++);
+            if (ImGui::Button(bl.c_str())) {
                 showChartWindow = true;
                 activeChartSymbol = asset->getSymbol();
                 activeChartId = asset->getName();
@@ -84,6 +181,7 @@ void RenderUI(Portfolio& myPortfolio) {
     ImGui::InputText("ID (np. bitcoin)", inputCoinId, IM_ARRAYSIZE(inputCoinId));
     ImGui::InputText("Symbol (np. BTC)", inputSymbol, IM_ARRAYSIZE(inputSymbol));
     ImGui::InputFloat("Ilosc", &inputAmount);
+    ImGui::InputFloat("Twoja cena zakupu ($)", &inputPurchasePrice);
 
     if (ImGui::Button("Pobierz cene i dodaj")) {
         if (strlen(inputCoinId) > 0 && strlen(inputSymbol) > 0) {
@@ -95,10 +193,12 @@ void RenderUI(Portfolio& myPortfolio) {
                 json data = json::parse(r.text);
                 if (data.contains(coinId)) {
                     double livePrice = data[coinId]["usd"];
-                    myPortfolio.addAsset(std::make_unique<Crypto>(coinId, symbol, livePrice, (double)inputAmount));
+                    myPortfolio.addAsset(std::make_unique<Crypto>(coinId, symbol, livePrice, (double)inputAmount, (double)inputPurchasePrice));
+                    SavePortfolio(myPortfolio);
                     inputCoinId[0] = '\0';
                     inputSymbol[0] = '\0';
                     inputAmount = 1.0f;
+                    inputPurchasePrice = 0.0f;
                 }
             }
         }
@@ -106,17 +206,19 @@ void RenderUI(Portfolio& myPortfolio) {
     ImGui::End();
 
     if (showChartWindow) {
-        ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_Appearing);
-        std::string windowTitle = "Historia Ceny (7d) - " + activeChartSymbol;
-        if (ImGui::Begin(windowTitle.c_str(), &showChartWindow)) {
+        ImGui::SetNextWindowSize(ImVec2(600, 450), ImGuiCond_Appearing);
+        if (ImGui::Begin(("Historia - " + activeChartSymbol).c_str(), &showChartWindow)) {
             if (!chartPrices.empty()) {
-                if (ImPlot::BeginPlot("Kurs ostatnie 7 dni")) {
-                    ImPlot::SetupAxes("Dzien", "USD");
+                if (ImPlot::BeginPlot("Kurs 7d")) {
                     ImPlot::PlotLine(activeChartSymbol.c_str(), chartDays.data(), chartPrices.data(), (int)chartPrices.size());
                     ImPlot::EndPlot();
                 }
-            } else {
-                ImGui::Text("Pobieranie danych...");
+                ImGui::Separator();
+                auto min_it = std::min_element(chartPrices.begin(), chartPrices.end());
+                auto max_it = std::max_element(chartPrices.begin(), chartPrices.end());
+                ImGui::TextColored(ImVec4(1, 0.5f, 0.5f, 1), "Cena MIN (7d): $%.2f", *min_it);
+                ImGui::SameLine(300);
+                ImGui::TextColored(ImVec4(0.5f, 1, 0.5f, 1), "Cena MAX (7d): $%.2f", *max_it);
             }
         }
         ImGui::End();

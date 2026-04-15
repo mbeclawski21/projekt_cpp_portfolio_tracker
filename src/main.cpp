@@ -43,8 +43,6 @@ int main() {
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     Portfolio myPortfolio;
-    myPortfolio.addAsset(std::make_unique<Crypto>("bitcoin", "BTC", 74500.0, 0.5));
-    myPortfolio.addAsset(std::make_unique<Crypto>("ethereum", "ETH", 3500.0, 2.0));
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();

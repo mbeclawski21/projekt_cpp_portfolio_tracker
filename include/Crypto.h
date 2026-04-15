@@ -4,7 +4,7 @@
 
 class Crypto : public Asset {
 public:
-    Crypto(std::string n, std::string s, double p, double amt) 
-        : Asset(n, s, p, amt) {}
+    Crypto(std::string n, std::string s, double p, double amt, double pp) 
+        : Asset(n, s, p, amt, pp) {}
 };
 #endif
