@@ -241,10 +241,44 @@ void RenderUI(Portfolio& myPortfolio) {
     ImGui::Begin("Dodaj Krypto (CoinGecko API)", nullptr, addFlags);
     
     ImGui::PushItemWidth(130.0f);
+
     ImGui::InputText("ID (np. bitcoin)", inputCoinId, IM_ARRAYSIZE(inputCoinId));
+    ImGui::SameLine();
+    if (ImGui::Button("Lista", ImVec2(60, 0))) {
+        ImGui::OpenPopup("ListaKryptoPopup");
+    }
+
+    if (ImGui::BeginPopup("ListaKryptoPopup")) {
+        ImGui::Text("Popularne waluty:");
+        ImGui::Separator();
+
+        ImGui::BeginChild("KryptoChild", ImVec2(180, 150), true);
+        
+        struct Preset { const char* id; const char* symbol; const char* name; };
+        static Preset cryptos[] = {
+            {"bitcoin", "BTC", "Bitcoin"}, {"ethereum", "ETH", "Ethereum"},
+            {"tether", "USDT", "Tether"}, {"binancecoin", "BNB", "BNB"},
+            {"solana", "SOL", "Solana"}, {"ripple", "XRP", "XRP"},
+            {"usd-coin", "USDC", "USDC"}, {"cardano", "ADA", "Cardano"},
+            {"dogecoin", "DOGE", "Dogecoin"}, {"chainlink", "LINK", "Chainlink"},
+            {"polkadot", "DOT", "Polkadot"}, {"litecoin", "LTC", "Litecoin"},
+            {"matic-network", "MATIC", "Polygon"}
+        };
+
+        for (const auto& c : cryptos) {
+            if (ImGui::Selectable(c.name)) {
+                snprintf(inputCoinId, sizeof(inputCoinId), "%s", c.id);
+                snprintf(inputSymbol, sizeof(inputSymbol), "%s", c.symbol);
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndChild();
+        ImGui::EndPopup();
+    }
+
     ImGui::InputText("Symbol (np. BTC)", inputSymbol, IM_ARRAYSIZE(inputSymbol));
     ImGui::InputFloat("Ilosc", &inputAmount);
-    ImGui::InputFloat("Twoja cena zakupu ($)", &inputPurchasePrice);
+    ImGui::InputFloat("Cena zakupu ($)", &inputPurchasePrice);
     ImGui::PopItemWidth();
 
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
