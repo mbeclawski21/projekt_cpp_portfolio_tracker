@@ -29,3 +29,10 @@ Portfolio tracker to aplikacja służąca do śledzenia i zarządzania portfelem
 * **Synchronizacja i automatyczne odświeżanie:** * Przycisk ręcznej synchronizacji, pozwalający na natychmiastowe pobranie najświeższych kursów dla wszystkich posiadanych kryptowalut naraz (optymalizacja zapytań API).
     * System automatycznego odświeżania danych w tle co 5 minut.
 * **Statystyki ekstremów cenowych:** Rozbudowa okna wykresów o analizę danych historycznych - wyznaczanie i wyświetlanie najniższej (MIN) oraz najwyższej (MAX) ceny z ostatniego tygodnia.
+
+## Tydzień 5 - Zarządzanie Aktywami i Optymalizacja Interfejsu.
+
+* **Zarządzanie aktywami (Usuwanie):** Implementacja funkcjonalności trwałego usuwania konkretnych pozycji z portfela.
+* **Modyfikacja danych w czasie rzeczywistym (Edycja):** Dodanie interaktywnego okna wyskakującego z poziomu tabeli, pozwalającego na dynamiczną aktualizację posiadanej ilości aktywa oraz jego ceny zakupu. Zmiany natychmiastowo aktualizują kalkulacje zysków/strat i są automatycznie zapisywane w pliku JSON.
+* **Sztywny układ i optymalizacja UX :** Przebudowa interfejsu graficznego poprzez zablokowanie możliwości przesuwania, zwijania i skalowania okien (`ImGuiWindowFlags_NoMove` | `NoResize` | `NoCollapse`). Zapewnia to spójny wygląd aplikacji niezależnie od działań użytkownika.
+* **Poprawki wizualne formularzy:** Zastosowanie dyrektywy `ImGui::PushItemWidth` do precyzyjnego skalowania pól wejściowych (InputBox), co wyeliminowało błędy renderowania (ucinanie etykiet tekstowych) oraz nakładanie się na siebie elementów interfejsu.

@@ -26,6 +26,19 @@ public:
         }
     }
 
+    void removeAssetByIndex(size_t index) {
+        if (index < assets.size()) {
+            assets.erase(assets.begin() + index);
+        }
+    }
+
+    void updateAsset(size_t index, double newAmount, double newPurchasePrice) {
+        if (index < assets.size()) {
+            assets[index]->setAmount(newAmount);
+            assets[index]->setPurchasePrice(newPurchasePrice);
+        }
+    }
+
     double calculateTotalValue() const {
         double total = 0.0;
         for (const auto& asset : assets) {

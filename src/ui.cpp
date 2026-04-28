@@ -25,6 +25,12 @@ static float inputPurchasePrice = 0.0f;
 
 static float refreshTimer = 0.0f;
 
+static int assetToDeleteIndex = -1;
+static int assetToEditIndex = -1;
+static bool openEditPopup = false;
+static float editAmount = 0.0f;
+static float editPurchasePrice = 0.0f;
+
 std::string ToLower(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
     s.erase(std::remove_if(s.begin(), s.end(), isspace), s.end());
@@ -113,7 +119,11 @@ void RenderUI(Portfolio& myPortfolio) {
         refreshTimer = 0.0f;
     }
 
-    ImGui::Begin("Moj Portfel Inwestycyjny", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::SetNextWindowPos(ImVec2(410, 20), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(850, 300), ImGuiCond_Always);
+    ImGuiWindowFlags portfolioFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+
+    ImGui::Begin("Moj Portfel Inwestycyjny", nullptr, portfolioFlags);
     
     double totalVal = myPortfolio.calculateTotalValue();
     double totalCost = 0;
@@ -131,8 +141,8 @@ void RenderUI(Portfolio& myPortfolio) {
     ImGui::SameLine();
     ImGui::TextColored(totalPlColor, "$%.2f (%.2f%%)", totalProfit, totalProfitPct);
     
-    ImGui::SameLine(ImGui::GetWindowWidth() - 150);
-    if (ImGui::Button("Synchronizuj kursy")) {
+    ImGui::SameLine(ImGui::GetWindowWidth() - 160.0f);
+    if (ImGui::Button("Synchronizuj kursy", ImVec2(140.0f, 0))) {
         RefreshAllPrices(myPortfolio);
         refreshTimer = 0.0f;
     }
@@ -145,8 +155,8 @@ void RenderUI(Portfolio& myPortfolio) {
         ImGui::TableSetupColumn("Cena Kupna");
         ImGui::TableSetupColumn("Cena Aktualna");
         ImGui::TableSetupColumn("Wartosc");
-        ImGui::TableSetupColumn("Zysk/Strata $");
-        ImGui::TableSetupColumn("Zysk/Strata %");
+        ImGui::TableSetupColumn("Zysk $");
+        ImGui::TableSetupColumn("Zysk %");
         ImGui::TableSetupColumn("Akcje");
         ImGui::TableHeadersRow();
 
@@ -163,27 +173,82 @@ void RenderUI(Portfolio& myPortfolio) {
             ImGui::TableSetColumnIndex(4); ImGui::Text("$%.2f", asset->getTotalValue());
             ImGui::TableSetColumnIndex(5); ImGui::TextColored(plColor, "$%.2f", pl);
             ImGui::TableSetColumnIndex(6); ImGui::TextColored(plColor, "%.2f%%", asset->getProfitLossPercentage());
+            
             ImGui::TableSetColumnIndex(7);
             
-            std::string bl = "Wykres##" + std::to_string(n++);
+            std::string bl = "Wykres##" + std::to_string(n);
             if (ImGui::Button(bl.c_str())) {
                 showChartWindow = true;
                 activeChartSymbol = asset->getSymbol();
                 activeChartId = asset->getName();
                 FetchHistoricalData(activeChartId);
             }
+
+            ImGui::SameLine();
+            std::string btnEdit = "Edytuj##" + std::to_string(n);
+            if (ImGui::Button(btnEdit.c_str())) {
+                assetToEditIndex = n;
+                editAmount = asset->getAmount();
+                editPurchasePrice = asset->getPurchasePrice();
+                openEditPopup = true;
+            }
+
+            ImGui::SameLine();
+            std::string btnDel = "Usun##" + std::to_string(n);
+            if (ImGui::Button(btnDel.c_str())) {
+                assetToDeleteIndex = n;
+            }
+            n++;
         }
         ImGui::EndTable();
     }
     ImGui::End();
 
-    ImGui::Begin("Dodaj Krypto (CoinGecko API)", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    if (assetToDeleteIndex >= 0) {
+        myPortfolio.removeAssetByIndex(assetToDeleteIndex);
+        SavePortfolio(myPortfolio);
+        assetToDeleteIndex = -1;
+    }
+
+    if (openEditPopup) {
+        ImGui::OpenPopup("Edytuj Aktywo");
+        openEditPopup = false;
+    }
+
+    if (ImGui::BeginPopupModal("Edytuj Aktywo", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::InputFloat("Nowa Ilosc", &editAmount);
+        ImGui::InputFloat("Nowa Cena Kupna ($)", &editPurchasePrice);
+
+        if (ImGui::Button("Zapisz", ImVec2(120, 0))) {
+            if (assetToEditIndex >= 0) {
+                myPortfolio.updateAsset(assetToEditIndex, editAmount, editPurchasePrice);
+                SavePortfolio(myPortfolio);
+            }
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SetItemDefaultFocus();
+        ImGui::SameLine();
+        if (ImGui::Button("Anuluj", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(380, 300), ImGuiCond_Always);
+    ImGuiWindowFlags addFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+
+    ImGui::Begin("Dodaj Krypto (CoinGecko API)", nullptr, addFlags);
+    
+    ImGui::PushItemWidth(130.0f);
     ImGui::InputText("ID (np. bitcoin)", inputCoinId, IM_ARRAYSIZE(inputCoinId));
     ImGui::InputText("Symbol (np. BTC)", inputSymbol, IM_ARRAYSIZE(inputSymbol));
     ImGui::InputFloat("Ilosc", &inputAmount);
     ImGui::InputFloat("Twoja cena zakupu ($)", &inputPurchasePrice);
+    ImGui::PopItemWidth();
 
-    if (ImGui::Button("Pobierz cene i dodaj")) {
+    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+    if (ImGui::Button("Pobierz cene i dodaj", ImVec2(-1, 0))) {
         if (strlen(inputCoinId) > 0 && strlen(inputSymbol) > 0) {
             std::string coinId = ToLower(std::string(inputCoinId));
             std::string symbol = std::string(inputSymbol);
@@ -206,10 +271,13 @@ void RenderUI(Portfolio& myPortfolio) {
     ImGui::End();
 
     if (showChartWindow) {
-        ImGui::SetNextWindowSize(ImVec2(600, 450), ImGuiCond_Appearing);
-        if (ImGui::Begin(("Historia - " + activeChartSymbol).c_str(), &showChartWindow)) {
+        ImGui::SetNextWindowPos(ImVec2(410, 340), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(850, 360), ImGuiCond_Always);
+        ImGuiWindowFlags chartFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+
+        if (ImGui::Begin(("Historia - " + activeChartSymbol).c_str(), &showChartWindow, chartFlags)) {
             if (!chartPrices.empty()) {
-                if (ImPlot::BeginPlot("Kurs 7d")) {
+                if (ImPlot::BeginPlot("Kurs 7d", ImVec2(-1, -40))) {
                     ImPlot::PlotLine(activeChartSymbol.c_str(), chartDays.data(), chartPrices.data(), (int)chartPrices.size());
                     ImPlot::EndPlot();
                 }

@@ -21,6 +21,9 @@ public:
     double getPrice() const { return currentPrice; }
     double getAmount() const { return amount; }
     double getPurchasePrice() const { return purchasePrice; }
+
+    void setAmount(double amt) { amount = amt; }
+    void setPurchasePrice(double pp) { purchasePrice = pp; }
     
     double getTotalValue() const { return currentPrice * amount; }
     double getTotalCost() const { return purchasePrice * amount; }
