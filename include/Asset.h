@@ -34,5 +34,6 @@ public:
     }
 
     virtual void updatePrice(double newPrice) { currentPrice = newPrice; }
+    virtual void setCurrentPrice(double newPrice) { currentPrice = newPrice; }
 };
 #endif

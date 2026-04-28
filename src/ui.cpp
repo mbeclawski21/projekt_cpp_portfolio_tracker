@@ -335,7 +335,27 @@ void RenderUI(Portfolio& myPortfolio) {
                 json data = json::parse(r.text);
                 if (data.contains(coinId)) {
                     double livePrice = data[coinId]["usd"];
-                    myPortfolio.addAsset(std::make_unique<Crypto>(coinId, symbol, livePrice, (double)inputAmount, (double)inputPurchasePrice));
+                    
+                    bool found = false;
+                    for (auto& asset : myPortfolio.getAssets()) {
+                        if (asset->getSymbol() == symbol) {
+                            double oldAmount = asset->getAmount();
+                            double oldPrice = asset->getPurchasePrice();
+                            double newAmount = oldAmount + (double)inputAmount;
+                            double newAvgPrice = ((oldAmount * oldPrice) + ((double)inputAmount * (double)inputPurchasePrice)) / newAmount;
+                            
+                            asset->setAmount(newAmount);
+                            asset->setPurchasePrice(newAvgPrice);
+                            asset->setCurrentPrice(livePrice);
+                            found = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!found) {
+                        myPortfolio.addAsset(std::make_unique<Crypto>(coinId, symbol, livePrice, (double)inputAmount, (double)inputPurchasePrice));
+                    }
+                    
                     SavePortfolio(myPortfolio);
                     inputCoinId[0] = '\0';
                     inputSymbol[0] = '\0';
@@ -343,6 +363,47 @@ void RenderUI(Portfolio& myPortfolio) {
                     inputPurchasePrice = 0.0f;
                 }
             }
+        }
+    }
+    ImGui::End();
+
+    ImGui::SetNextWindowPos(ImVec2(20, 340), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(380, 360), ImGuiCond_Always);
+    ImGuiWindowFlags pieFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
+
+    ImGui::Begin("Struktura Portfela", nullptr, pieFlags);
+    
+    auto& assets = myPortfolio.getAssets();
+    
+    double realTotalVal = 0.0;
+    for (const auto& asset : assets) {
+        realTotalVal += asset->getTotalValue();
+    }
+
+    if (assets.empty() || realTotalVal <= 0) {
+        ImGui::TextWrapped("Dodaj kryptowaluty o wartosci wiekszej niz 0, aby zobaczyc wykres.");
+    } else {
+        std::vector<std::string> labelStrings;
+        std::vector<const char*> labels;
+        std::vector<double> values;
+        
+        int i = 0;
+        for (const auto& asset : assets) {
+            std::string uniqueLabel = asset->getSymbol() + "##" + std::to_string(i++);
+            labelStrings.push_back(uniqueLabel);
+            
+            double percentage = (asset->getTotalValue() / realTotalVal) * 100.0;
+            values.push_back(percentage);
+        }
+
+        for (const auto& str : labelStrings) {
+            labels.push_back(str.c_str());
+        }
+
+        if (ImPlot::BeginPlot("##StrukturaPie", ImVec2(-1, -1), 0)) {
+            ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_NoDecorations);
+            ImPlot::PlotPieChart(labels.data(), values.data(), (int)values.size(), 0.5, 0.5, 0.35, "%.0f%%");
+            ImPlot::EndPlot();
         }
     }
     ImGui::End();
