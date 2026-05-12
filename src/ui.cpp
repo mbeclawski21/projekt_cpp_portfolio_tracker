@@ -371,7 +371,7 @@ void RenderUI(Portfolio& myPortfolio) {
                 for(auto& p : convertedPrices) p *= multiplier;
 
                 if (ImPlot::BeginPlot("Kurs 7d", ImVec2(-1, -40))) {
-                    ImPlot::SetupAxis(ImAxis_Y1, cur);
+                    ImPlot::SetupAxes(nullptr, cur, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
                     ImPlot::PlotLine(activeChartSymbol.c_str(), chartDays.data(), convertedPrices.data(), (int)convertedPrices.size());
                     ImPlot::EndPlot();
                 }
