@@ -2,23 +2,23 @@
 #define PORTFOLIO_H
 
 #include <vector>
-#include <memory>
 #include <algorithm>
-#include "Asset.h"
+#include <string>
+#include "Crypto.h"
 
 class Portfolio {
 private:
-    std::vector<std::unique_ptr<Asset>> assets;
+    std::vector<Crypto> assets;
 
 public:
-    void addAsset(std::unique_ptr<Asset> asset) {
-        assets.push_back(std::move(asset));
+    void addAsset(const Crypto& asset) {
+        assets.push_back(asset);
     }
 
     void removeAsset(const std::string& symbol) {
         auto it = std::remove_if(assets.begin(), assets.end(),
-            [&symbol](const std::unique_ptr<Asset>& asset) {
-                return asset->getSymbol() == symbol;
+            [&symbol](const Crypto& asset) {
+                return asset.getSymbol() == symbol;
             });
 
         if (it != assets.end()) {
@@ -34,22 +34,21 @@ public:
 
     void updateAsset(size_t index, double newAmount, double newPurchasePrice) {
         if (index < assets.size()) {
-            assets[index]->setAmount(newAmount);
-            assets[index]->setPurchasePrice(newPurchasePrice);
+            assets[index].setAmount(newAmount);
+            assets[index].setPurchasePrice(newPurchasePrice);
         }
     }
 
     double calculateTotalValue() const {
         double total = 0.0;
         for (const auto& asset : assets) {
-            total += asset->getPrice(); 
+            total += asset.getTotalValue(); 
         }
         return total;
     }
 
-    const std::vector<std::unique_ptr<Asset>>& getAssets() const {
-        return assets;
-    }
+    std::vector<Crypto>& getAssets() { return assets; }
+    const std::vector<Crypto>& getAssets() const { return assets; }
 };
 
 #endif

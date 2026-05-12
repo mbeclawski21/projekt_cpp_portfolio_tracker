@@ -41,3 +41,9 @@ Portfolio tracker to aplikacja służąca do śledzenia i zarządzania portfelem
 * **Inteligentne łączenie aktywów:** System automatycznie rozpoznaje próby dodania waluty, która już znajduje się w portfelu. Zamiast tworzyć duplikaty, aplikacja aktualizuje istniejący wpis, przeliczając nową ilość monet oraz średnią ważoną cenę zakupu.
 * **Interaktywna wizualizacja:** Dodano pełną interakcję z wykresem kołowym struktury portfela (zoom, przesuwanie), co pozwala na szczegółową analizę przy dużej liczbie drobnych aktywów.
 * **Optymalizacja wyświetlania:** Uproszczono etykiety danych na wykresach do pełnych procentów, eliminując błędy renderowania czcionek pikselowych przy wartościach dziesiętnych.
+
+## Tydzień 7 - Specjalizacja, Optymalizacja i Wielowalutowość.
+
+* **Skupienie na rynku Crypto:** Aplikacja stała się dedykowanym narzędziem do śledzenia wyłącznie kryptowalut.
+* **Dynamiczna wielowalutowość (USD/PLN):** Wprowadzono funkcję przeliczania wartości całego portfela w czasie rzeczywistym. Użytkownik może jednym kliknięciem zmienić widok z dolarów na złotówki (wraz z edycją kursu), a aplikacja automatycznie przelicza tabele, podsumowania oraz osie wykresów.
+* **Korekta estetyki UI:** Dopracowano siatkę interfejsu graficznego, przywracając idealną symetrię i proporcje okien.
