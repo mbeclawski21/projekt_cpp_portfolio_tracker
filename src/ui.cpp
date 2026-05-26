@@ -2,21 +2,15 @@
 #include "imgui.h"
 #include "implot.h"
 #include "Crypto.h"
+#include "CoinGeckoApi.h"
+#include "PortfolioStorage.h"
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <fstream>
-#include <chrono>
-#include <cpr/cpr.h>
-#include <nlohmann/json.hpp>
-
-using json = nlohmann::json;
 
 static bool showChartWindow = false;
 static std::string activeChartSymbol = "";
 static std::string activeChartId = "";
-static std::vector<double> chartPrices;
-static std::vector<double> chartDays;
 
 static char inputCoinId[64] = "";
 static char inputSymbol[16] = "";
@@ -34,94 +28,34 @@ static float editPurchasePrice = 0.0f;
 static bool usePLN = false;
 static float exchangeRate = 4.0f;
 
-std::string ToLower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
-    s.erase(std::remove_if(s.begin(), s.end(), isspace), s.end());
-    return s;
-}
-
-void SavePortfolio(const Portfolio& p) {
-    json j = json::array();
-    for (const auto& a : p.getAssets()) {
-        j.push_back({
-            {"id", a.getName()},
-            {"symbol", a.getSymbol()},
-            {"amount", a.getAmount()},
-            {"purchasePrice", a.getPurchasePrice()},
-            {"currentPrice", a.getPrice()}
-        });
-    }
-    std::ofstream file("portfolio.json");
-    file << j.dump(4);
-}
-
-void LoadPortfolio(Portfolio& p) {
-    std::ifstream file("portfolio.json");
-    if (!file.is_open()) return;
-    json j;
-    file >> j;
-    for (const auto& item : j) {
-        p.addAsset(Crypto(
-            item["id"], item["symbol"], item["currentPrice"], item["amount"], item["purchasePrice"]
-        ));
-    }
-}
-
-void RefreshAllPrices(Portfolio& myPortfolio) {
-    auto& assets = myPortfolio.getAssets();
-    if (assets.empty()) return;
-
-    std::string ids = "";
-    for (size_t i = 0; i < assets.size(); ++i) {
-        ids += assets[i].getName();
-        if (i < assets.size() - 1) ids += ",";
-    }
-
-    std::string url = "https://api.coingecko.com/api/v3/simple/price?ids=" + ids + "&vs_currencies=usd";
-    cpr::Response r = cpr::Get(cpr::Url{url});
-
-    if (r.status_code == 200) {
-        json data = json::parse(r.text);
-        for (auto& asset : assets) {
-            std::string id = asset.getName();
-            if (data.contains(id)) {
-                asset.updatePrice(data[id]["usd"]);
-            }
-        }
-    }
-}
-
-void FetchHistoricalData(std::string coinId) {
-    chartPrices.clear();
-    chartDays.clear();
-    std::string cleanId = ToLower(coinId);
-    std::string url = "https://api.coingecko.com/api/v3/coins/" + cleanId + "/market_chart?vs_currency=usd&days=7&interval=daily";
-    cpr::Response r = cpr::Get(cpr::Url{url});
-    if (r.status_code == 200) {
-        json data = json::parse(r.text);
-        if (data.contains("prices")) {
-            int dayCounter = 1;
-            for (auto& entry : data["prices"]) {
-                chartPrices.push_back(entry[1].get<double>());
-                chartDays.push_back((double)dayCounter++);
-            }
-        }
-    }
-}
+static void RenderMainPortfolioWindow(Portfolio& myPortfolio, float multiplier, const char* cur);
+static void RenderAddCryptoWindow(Portfolio& myPortfolio);
+static void RenderPortfolioStructureWindow(Portfolio& myPortfolio);
+static void RenderHistoryChartWindow(float multiplier, const char* cur);
 
 void RenderUI(Portfolio& myPortfolio) {
     static bool firstLoad = true;
     if (firstLoad) {
-        LoadPortfolio(myPortfolio);
+        PortfolioStorage::LoadPortfolio(myPortfolio);
         firstLoad = false;
     }
 
     refreshTimer += ImGui::GetIO().DeltaTime;
     if (refreshTimer > 300.0f) {
-        RefreshAllPrices(myPortfolio);
+        CoinGeckoApi::RefreshAllPrices(myPortfolio);
         refreshTimer = 0.0f;
     }
 
+    float multiplier = usePLN ? exchangeRate : 1.0f;
+    const char* cur = usePLN ? "zl" : "$";
+
+    RenderMainPortfolioWindow(myPortfolio, multiplier, cur);
+    RenderAddCryptoWindow(myPortfolio);
+    RenderPortfolioStructureWindow(myPortfolio);
+    RenderHistoryChartWindow(multiplier, cur);
+}
+
+static void RenderMainPortfolioWindow(Portfolio& myPortfolio, float multiplier, const char* cur) {
     ImGui::SetNextWindowPos(ImVec2(410, 20), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(850, 300), ImGuiCond_Always);
     ImGuiWindowFlags portfolioFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
@@ -137,14 +71,11 @@ void RenderUI(Portfolio& myPortfolio) {
     
     ImGui::SameLine(ImGui::GetWindowWidth() - 160.0f);
     if (ImGui::Button("Synchronizuj kursy", ImVec2(140.0f, 0))) {
-        RefreshAllPrices(myPortfolio);
+        CoinGeckoApi::RefreshAllPrices(myPortfolio);
         refreshTimer = 0.0f;
     }
 
     ImGui::Separator();
-
-    float multiplier = usePLN ? exchangeRate : 1.0f;
-    const char* cur = usePLN ? "zl" : "$";
 
     double totalVal = myPortfolio.calculateTotalValue() * multiplier;
     double totalCostUSD = 0;
@@ -197,7 +128,7 @@ void RenderUI(Portfolio& myPortfolio) {
                 showChartWindow = true;
                 activeChartSymbol = asset.getSymbol();
                 activeChartId = asset.getName();
-                FetchHistoricalData(activeChartId);
+                CoinGeckoApi::FetchHistoricalData(activeChartId);
             }
 
             ImGui::SameLine();
@@ -222,7 +153,7 @@ void RenderUI(Portfolio& myPortfolio) {
 
     if (assetToDeleteIndex >= 0) {
         myPortfolio.removeAssetByIndex(assetToDeleteIndex);
-        SavePortfolio(myPortfolio);
+        PortfolioStorage::SavePortfolio(myPortfolio);
         assetToDeleteIndex = -1;
     }
 
@@ -238,7 +169,7 @@ void RenderUI(Portfolio& myPortfolio) {
         if (ImGui::Button("Zapisz", ImVec2(120, 0))) {
             if (assetToEditIndex >= 0) {
                 myPortfolio.updateAsset(assetToEditIndex, (double)editAmount, (double)editPurchasePrice);
-                SavePortfolio(myPortfolio);
+                PortfolioStorage::SavePortfolio(myPortfolio);
             }
             ImGui::CloseCurrentPopup();
         }
@@ -249,13 +180,14 @@ void RenderUI(Portfolio& myPortfolio) {
         }
         ImGui::EndPopup();
     }
+}
 
+static void RenderAddCryptoWindow(Portfolio& myPortfolio) {
     ImGui::SetNextWindowPos(ImVec2(20, 20), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(380, 300), ImGuiCond_Always);
     ImGuiWindowFlags addFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
 
     ImGui::Begin("Dodaj Krypto (CoinGecko API)", nullptr, addFlags);
-    
     ImGui::PushItemWidth(130.0f);
 
     ImGui::InputText("ID (np. bitcoin)", inputCoinId, IM_ARRAYSIZE(inputCoinId));
@@ -295,41 +227,17 @@ void RenderUI(Portfolio& myPortfolio) {
     ImGui::Dummy(ImVec2(0.0f, 10.0f));
     if (ImGui::Button("Pobierz cene i dodaj", ImVec2(-1, 0))) {
         if (strlen(inputCoinId) > 0 && strlen(inputSymbol) > 0) {
-            std::string coinId = ToLower(std::string(inputCoinId));
-            std::string symbol = std::string(inputSymbol);
-            std::string url = "https://api.coingecko.com/api/v3/simple/price?ids=" + coinId + "&vs_currencies=usd";
-            cpr::Response r = cpr::Get(cpr::Url{url});
-            if (r.status_code == 200) {
-                json data = json::parse(r.text);
-                if (data.contains(coinId)) {
-                    double livePrice = data[coinId]["usd"];
-                    bool found = false;
-                    auto& refAssets = myPortfolio.getAssets();
-                    for (auto& asset : refAssets) {
-                        if (asset.getSymbol() == symbol) {
-                            double oldAmount = asset.getAmount();
-                            double oldPrice = asset.getPurchasePrice();
-                            double newAmount = oldAmount + (double)inputAmount;
-                            double newAvgPrice = ((oldAmount * oldPrice) + ((double)inputAmount * (double)inputPurchasePrice)) / newAmount;
-                            asset.setAmount(newAmount);
-                            asset.setPurchasePrice(newAvgPrice);
-                            asset.setCurrentPrice(livePrice);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found) {
-                        myPortfolio.addAsset(Crypto(coinId, symbol, livePrice, (double)inputAmount, (double)inputPurchasePrice));
-                    }
-                    SavePortfolio(myPortfolio);
-                    inputCoinId[0] = '\0'; inputSymbol[0] = '\0';
-                    inputAmount = 1.0f; inputPurchasePrice = 0.0f;
-                }
+            if (CoinGeckoApi::AddCryptoWithLivePrice(myPortfolio, inputCoinId, inputSymbol, inputAmount, inputPurchasePrice)) {
+                PortfolioStorage::SavePortfolio(myPortfolio);
+                inputCoinId[0] = '\0'; inputSymbol[0] = '\0';
+                inputAmount = 1.0f; inputPurchasePrice = 0.0f;
             }
         }
     }
     ImGui::End();
+}
 
+static void RenderPortfolioStructureWindow(Portfolio& myPortfolio) {
     ImGui::SetNextWindowPos(ImVec2(20, 340), ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(380, 360), ImGuiCond_Always);
     ImGuiWindowFlags pieFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
@@ -359,20 +267,22 @@ void RenderUI(Portfolio& myPortfolio) {
         }
     }
     ImGui::End();
+}
 
+static void RenderHistoryChartWindow(float multiplier, const char* cur) {
     if (showChartWindow) {
         ImGui::SetNextWindowPos(ImVec2(410, 340), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(850, 360), ImGuiCond_Always);
         ImGuiWindowFlags chartFlags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse;
 
         if (ImGui::Begin(("Historia - " + activeChartSymbol).c_str(), &showChartWindow, chartFlags)) {
-            if (!chartPrices.empty()) {
-                std::vector<double> convertedPrices = chartPrices;
+            if (!CoinGeckoApi::chartPrices.empty()) {
+                std::vector<double> convertedPrices = CoinGeckoApi::chartPrices;
                 for(auto& p : convertedPrices) p *= multiplier;
 
                 if (ImPlot::BeginPlot("Kurs 7d", ImVec2(-1, -40))) {
                     ImPlot::SetupAxes(nullptr, cur, ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
-                    ImPlot::PlotLine(activeChartSymbol.c_str(), chartDays.data(), convertedPrices.data(), (int)convertedPrices.size());
+                    ImPlot::PlotLine(activeChartSymbol.c_str(), CoinGeckoApi::chartDays.data(), convertedPrices.data(), (int)convertedPrices.size());
                     ImPlot::EndPlot();
                 }
                 ImGui::Separator();

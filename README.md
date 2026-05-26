@@ -47,3 +47,11 @@ Portfolio tracker to aplikacja służąca do śledzenia i zarządzania portfelem
 * **Skupienie na rynku Crypto:** Aplikacja stała się dedykowanym narzędziem do śledzenia wyłącznie kryptowalut.
 * **Dynamiczna wielowalutowość (USD/PLN):** Wprowadzono funkcję przeliczania wartości całego portfela w czasie rzeczywistym. Użytkownik może jednym kliknięciem zmienić widok z dolarów na złotówki (wraz z edycją kursu), a aplikacja automatycznie przelicza tabele, podsumowania oraz osie wykresów.
 * **Korekta estetyki UI:** Dopracowano siatkę interfejsu graficznego, przywracając idealną symetrię i proporcje okien.
+
+## Tydzień 9 - Refaktoryzacja, Architektura i Czysty Kod.
+
+* **Refaktoryzacja architektury:** Rozbicie monolitycznego pliku interfejsu (`ui.cpp`) na mniejsze, wyspecjalizowane moduły.
+* **Wydzielenie warstwy sieciowej:** Przeniesienie całej logiki komunikacji z API CoinGecko (obsługa biblioteki CPR, pobieranie cen i historii) do niezależnego modułu `CoinGeckoApi`. Interfejs graficzny został odizolowany od bezpośrednich zapytań HTTP.
+* **Niezależny menedżer danych:** Wyodrębnienie logiki zapisu i odczytu stanu portfela (parsowanie plików JSON) do dedykowanego modułu `PortfolioStorage`.
+* **Uporządkowanie komponentów UI:** Podział głównej pętli rysującej interfejs na mniejsze, czytelne sub-komponenty (osobne funkcje renderujące tabele, formularze i wykresy), co drastycznie ułatwia utrzymanie i rozwój kodu.
+* **Rozwój systemu budowania:** Dostosowanie pliku `CMakeLists.txt` do nowej, wieloplikowej struktury projektu z podziałem na katalogi `src/` oraz `include/`.

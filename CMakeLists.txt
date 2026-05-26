@@ -52,6 +52,8 @@ file(GLOB IMPLOT_SOURCES
 add_executable(TrackerPortfolio 
     src/main.cpp 
     src/ui.cpp 
+    src/CoinGeckoApi.cpp
+    src/PortfolioStorage.cpp
     ${IMGUI_SOURCES} 
     ${IMPLOT_SOURCES}
 )
