@@ -9,6 +9,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
+find_package(OpenGL REQUIRED)
+
 message(STATUS "Pobieranie biblioteki JSON...")
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
@@ -74,4 +76,6 @@ target_link_libraries(TrackerPortfolio PRIVATE
 
 if(WIN32)
     target_link_libraries(TrackerPortfolio PRIVATE opengl32 gdi32 shell32 user32)
+else()
+    target_link_libraries(TrackerPortfolio PRIVATE ${OPENGL_LIBRARIES})
 endif()
